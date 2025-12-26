@@ -9,7 +9,7 @@
     .container { max-width: 500px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     header { text-align: center; margin-bottom: 20px; color: #2c3e50; }
     h2 { border-bottom: 2px solid #eee; padding-bottom: 10px; color: #34495e; }
-    input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #ccc; box-sizing: border-box; font-size: 14px; }
+    input, select, button { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #ccc; font-size: 14px; }
     
     button { background: #2c3e50; color: white; border: none; cursor: pointer; font-weight: bold; transition: 0.3s; }
     button:hover { background: #1a242f; }
@@ -67,13 +67,19 @@
 
   <div id="attendanceForm" class="hidden">
     <h2>Mark Attendance</h2>
+
     <label>Select Event:</label>
     <select id="eventSelect"></select>
+
     <label>Mode:</label>
     <select id="modeSelect">
       <option value="Office">Office</option>
       <option value="Work From Home">Work From Home</option>
     </select>
+
+    <label>Hours Attended:</label>
+    <input type="number" id="hoursInput" placeholder="Enter hours (e.g. 2, 4, 8)" min="1">
+
     <button onclick="processMarkAttendance()">Submit Attendance</button>
     <button onclick="goBack()">Back</button>
   </div>
@@ -81,9 +87,11 @@
   <div id="outputScreen" class="hidden">
     <h2 id="outputTitle">Results</h2>
     <div id="resultList" style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;"></div>
+    
     <div id="adminActions" class="hidden">
         <button class="del-btn" style="width:100%; padding:12px; margin-top:10px" onclick="clearAttendance()">🗑️ Clear All Attendance</button>
     </div>
+
     <button onclick="goBack()" style="margin-top:15px;">Back to Menu</button>
   </div>
 </div>
@@ -97,178 +105,210 @@ const users = {
   "E101":    { pass: "emp123",  role: "emp"   }
 };
 
-  let events = JSON.parse(localStorage.getItem("ev_data")) || [];
-  let attendance = JSON.parse(localStorage.getItem("at_data")) || [];
-  let logs = JSON.parse(localStorage.getItem("lg_data")) || [];
-  let currentUser = null;
+let events = JSON.parse(localStorage.getItem("ev_data")) || [];
+let attendance = JSON.parse(localStorage.getItem("at_data")) || [];
+let logs = JSON.parse(localStorage.getItem("lg_data")) || [];
+let currentUser = null;
 
-  function hideAll() {
-    const screens = ["loginScreen", "adminMenu", "empMenu", "createEventScreen", "attendanceForm", "outputScreen"];
-    screens.forEach(s => document.getElementById(s).classList.add("hidden"));
-    document.getElementById("adminActions").classList.add("hidden");
-  }
+function hideAll() {
+  const screens = ["loginScreen", "adminMenu", "empMenu", "createEventScreen", "attendanceForm", "outputScreen"];
+  screens.forEach(s => document.getElementById(s).classList.add("hidden"));
+  document.getElementById("adminActions").classList.add("hidden");
+}
 
-  function login() {
-    const id = document.getElementById("loginId").value.toUpperCase().trim();
-    const pw = document.getElementById("loginPass").value.trim();
-    if(users[id] && users[id].pass === pw) {
-      currentUser = id;
-      addLog(`User ${id} logged in`);
-      goBack();
-    } else { alert("Error: Invalid ID or Password"); }
-  }
+function login() {
+  const id = document.getElementById("loginId").value.toUpperCase().trim();
+  const pw = document.getElementById("loginPass").value.trim();
 
-  function logout() {
-    currentUser = null;
-    hideAll();
-    document.getElementById("loginScreen").classList.remove("hidden");
-  }
-
-  function goBack() {
-    hideAll();
-    if (users[currentUser].role === "admin") {
-      document.getElementById("adminMenu").classList.remove("hidden");
-    } else {
-      document.getElementById("welcomeMsg").innerText = "Logged in as: " + currentUser;
-      document.getElementById("empMenu").classList.remove("hidden");
-    }
-  }
-
-  /* EVENT LOGIC */
-  function showCreateEvent() {
-    hideAll();
-    document.getElementById("eventFormTitle").innerText = "Create Event";
-    document.getElementById("editIndex").value = "-1";
-    document.getElementById("eventName").value = "";
-    document.getElementById("eventLocation").value = "";
-    document.getElementById("eventDate").value = "";
-    document.getElementById("createEventScreen").classList.remove("hidden");
-  }
-
-  function processCreateEvent() {
-    const name = document.getElementById("eventName").value.trim();
-    const loc = document.getElementById("eventLocation").value.trim();
-    const date = document.getElementById("eventDate").value;
-    const index = document.getElementById("editIndex").value;
-
-    if(!name || !loc || !date) { alert("Fill all fields!"); return; }
-
-    if(index === "-1") {
-      events.push({ name, loc, date });
-      addLog(`Admin created event: ${name}`);
-    } else {
-      events[index] = { name, loc, date };
-      addLog(`Admin updated event: ${name}`);
-    }
-    
-    saveData();
-    alert("Success!");
+  if(users[id] && users[id].pass === pw) {
+    currentUser = id;
+    addLog(`User ${id} logged in`);
     goBack();
+  } else {
+    alert("Error: Invalid ID or Password");
+  }
+}
+
+function logout() {
+  currentUser = null;
+  hideAll();
+  document.getElementById("loginScreen").classList.remove("hidden");
+}
+
+function goBack() {
+  hideAll();
+  if (users[currentUser].role === "admin") {
+    document.getElementById("adminMenu").classList.remove("hidden");
+  } else {
+    document.getElementById("welcomeMsg").innerText = "Logged in as: " + currentUser;
+    document.getElementById("empMenu").classList.remove("hidden");
+  }
+}
+
+/* EVENT LOGIC */
+function showCreateEvent() {
+  hideAll();
+  document.getElementById("eventFormTitle").innerText = "Create Event";
+  document.getElementById("editIndex").value = "-1";
+  document.getElementById("eventName").value = "";
+  document.getElementById("eventLocation").value = "";
+  document.getElementById("eventDate").value = "";
+  document.getElementById("createEventScreen").classList.remove("hidden");
+}
+
+function processCreateEvent() {
+  const name = document.getElementById("eventName").value.trim();
+  const loc = document.getElementById("eventLocation").value.trim();
+  const date = document.getElementById("eventDate").value;
+  const index = document.getElementById("editIndex").value;
+
+  if(!name || !loc || !date) {
+    alert("Fill all fields!");
+    return;
   }
 
-  function viewEvents() {
-    hideAll();
-    document.getElementById("outputTitle").innerText = "Available Events";
-    const box = document.getElementById("resultList");
-    box.innerHTML = events.length ? "" : "No events available.";
+  if(index === "-1") {
+    events.push({ name, loc, date });
+    addLog(`Admin created event: ${name}`);
+  } else {
+    events[index] = { name, loc, date };
+    addLog(`Admin updated event: ${name}`);
+  }
+  
+  saveData();
+  alert("Success!");
+  goBack();
+}
+
+function viewEvents() {
+  hideAll();
+  document.getElementById("outputTitle").innerText = "Available Events";
+  const box = document.getElementById("resultList");
+  box.innerHTML = events.length ? "" : "No events available.";
+
+  events.forEach((e, i) => {
+    let actions = users[currentUser].role === 'admin' ? 
+      `<div class="action-btn-group">
+          <button class="edit-btn" onclick="editEvent(${i})">✏️ Edit</button>
+          <button class="del-btn" onclick="removeEvent(${i})">🗑️ Remove</button>
+       </div>` : '';
     
-    events.forEach((e, i) => {
-      let actions = users[currentUser].role === 'admin' ? 
-        `<div class="action-btn-group">
-            <button class="edit-btn" onclick="editEvent(${i})">✏️ Edit</button>
-            <button class="del-btn" onclick="removeEvent(${i})">🗑️ Remove</button>
-         </div>` : '';
-      
-      box.innerHTML += `
-        <div class="list-item">
-          <strong>${e.name}</strong><br>
-          <small>📅 ${e.date} | 📍 ${e.loc}</small>${actions}
-        </div>`;
-    });
-    document.getElementById("outputScreen").classList.remove("hidden");
+    box.innerHTML += `
+      <div class="list-item">
+        <strong>${e.name}</strong><br>
+        <small>📅 ${e.date} | 📍 ${e.loc}</small>${actions}
+      </div>`;
+  });
+
+  document.getElementById("outputScreen").classList.remove("hidden");
+}
+
+function editEvent(index) {
+  showCreateEvent();
+  const e = events[index];
+  document.getElementById("eventFormTitle").innerText = "Edit Event";
+  document.getElementById("editIndex").value = index;
+  document.getElementById("eventName").value = e.name;
+  document.getElementById("eventLocation").value = e.loc;
+  document.getElementById("eventDate").value = e.date;
+}
+
+function removeEvent(index) {
+  if(confirm(`Delete "${events[index].name}"?`)) {
+    addLog(`Removed event: ${events[index].name}`);
+    events.splice(index, 1);
+    saveData();
+    viewEvents();
+  }
+}
+
+/* ATTENDANCE LOGIC */
+function showAttendanceForm() {
+  if(events.length === 0) return alert("No events available.");
+  hideAll();
+
+  const sel = document.getElementById("eventSelect");
+  sel.innerHTML = events.map((e, i) => `<option value="${i}">${e.name}</option>`).join("");
+
+  document.getElementById("attendanceForm").classList.remove("hidden");
+}
+
+function processMarkAttendance() {
+  const evIdx = document.getElementById("eventSelect").value;
+  const hours = document.getElementById("hoursInput").value;
+
+  if (!hours || hours <= 0) {
+    alert("Please enter valid hours attended.");
+    return;
   }
 
-  function editEvent(index) {
-    showCreateEvent();
-    const e = events[index];
-    document.getElementById("eventFormTitle").innerText = "Edit Event";
-    document.getElementById("editIndex").value = index;
-    document.getElementById("eventName").value = e.name;
-    document.getElementById("eventLocation").value = e.loc;
-    document.getElementById("eventDate").value = e.date;
-  }
+  attendance.push({
+    user: currentUser,
+    event: events[evIdx].name,
+    mode: document.getElementById("modeSelect").value,
+    hours: hours,
+    time: new Date().toLocaleString()
+  });
 
-  function removeEvent(index) {
-    if(confirm(`Delete "${events[index].name}"?`)) {
-      addLog(`Removed event: ${events[index].name}`);
-      events.splice(index, 1);
+  saveData();
+  alert("Recorded!");
+  goBack();
+}
+
+function viewAttendance() {
+  hideAll();
+  document.getElementById("outputTitle").innerText = "Attendance Log";
+
+  if(users[currentUser].role === 'admin')
+    document.getElementById("adminActions").classList.remove("hidden");
+
+  const box = document.getElementById("resultList");
+  box.innerHTML = attendance.length ? "" : "No records found.";
+
+  attendance.forEach(a => {
+    box.innerHTML += `
+      <div class="list-item">
+        <strong>ID: ${a.user}</strong><br>
+        ${a.event}<br>
+        <small>${a.mode} | ${a.hours} hours | ${a.time}</small>
+      </div>`;
+  });
+
+  document.getElementById("outputScreen").classList.remove("hidden");
+}
+
+function clearAttendance() {
+  if(confirm("Clear all attendance records?")) {
+      attendance = [];
       saveData();
-      viewEvents();
-    }
+      addLog("Admin cleared all attendance records");
+      viewAttendance();
   }
+}
 
-  /* ATTENDANCE LOGIC */
-  function showAttendanceForm() {
-    if(events.length === 0) return alert("No events available.");
-    hideAll();
-    const sel = document.getElementById("eventSelect");
-    sel.innerHTML = events.map((e, i) => `<option value="${i}">${e.name}</option>`).join("");
-    document.getElementById("attendanceForm").classList.remove("hidden");
-  }
+/* UTILITY */
+function saveData() {
+  localStorage.setItem("ev_data", JSON.stringify(events));
+  localStorage.setItem("at_data", JSON.stringify(attendance));
+  localStorage.setItem("lg_data", JSON.stringify(logs));
+}
 
-  function processMarkAttendance() {
-    const evIdx = document.getElementById("eventSelect").value;
-    attendance.push({
-      user: currentUser,
-      event: events[evIdx].name,
-      mode: document.getElementById("modeSelect").value,
-      time: new Date().toLocaleString()
-    });
-    saveData();
-    alert("Recorded!");
-    goBack();
-  }
+function addLog(msg) {
+  logs.push(new Date().toLocaleString() + " - " + msg);
+  saveData();
+}
 
-  function viewAttendance() {
-    hideAll();
-    document.getElementById("outputTitle").innerText = "Attendance Log";
-    if(users[currentUser].role === 'admin') document.getElementById("adminActions").classList.remove("hidden");
-    const box = document.getElementById("resultList");
-    box.innerHTML = attendance.length ? "" : "No records found.";
-    attendance.forEach(a => {
-      box.innerHTML += `<div class="list-item"><strong>ID: ${a.user}</strong><br>${a.event}<br><small>${a.mode} | ${a.time}</small></div>`;
-    });
-    document.getElementById("outputScreen").classList.remove("hidden");
-  }
+function viewLogs() {
+  hideAll();
+  document.getElementById("outputTitle").innerText = "System History";
+  const box = document.getElementById("resultList");
 
-  function clearAttendance() {
-    if(confirm("Clear all attendance records?")) {
-        attendance = [];
-        saveData();
-        addLog("Admin cleared all attendance records");
-        viewAttendance();
-    }
-  }
+  box.innerHTML = logs.slice().reverse()
+    .map(l => `<div class="log-item">${l}</div>`)
+    .join("");
 
-  /* UTILITY */
-  function saveData() {
-    localStorage.setItem("ev_data", JSON.stringify(events));
-    localStorage.setItem("at_data", JSON.stringify(attendance));
-    localStorage.setItem("lg_data", JSON.stringify(logs));
-  }
-
-  function addLog(msg) {
-    logs.push(new Date().toLocaleString() + " - " + msg);
-    saveData();
-  }
-
-  function viewLogs() {
-    hideAll();
-    document.getElementById("outputTitle").innerText = "System History";
-    const box = document.getElementById("resultList");
-    box.innerHTML = logs.slice().reverse().map(l => `<div class="log-item">${l}</div>`).join("");
-    document.getElementById("outputScreen").classList.remove("hidden");
-  }
+  document.getElementById("outputScreen").classList.remove("hidden");
+}
 </script>
 </body>
 </html>
